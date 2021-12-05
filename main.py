@@ -1,19 +1,20 @@
 #!/usr/bin/python
 
 import numpy as np
+import sys
 import torch
 
-from models import FC, FCSpiking
+from models      import LCN, LCNSpiking
+from modelsDummy import FC,  FCSpiking
+
+from data   import CopyRedChannel, OffSpikes, RateEncodeData, LatencyEncodeData, CopyEncodeLabels
+from data   import loadData, generateDataloaders, nSteps
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # 0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0, 1
 
 # Watchdog option
 # https://stackoverflow.com/questions/18599339/watchdog-monitoring-file-for-changes
-
-def getOnv(path):
-	onv = np.genfromtxt(path, delimiter=',')
-	return onv
 
 def main():
 
@@ -22,6 +23,12 @@ def main():
 	onvPath = f'{path}/onvOut.csv'
 	resPath = f'{path}/resultOut.csv'
 
+	spiking = True
+
+	# ********* TEMP SETUP ******** #
+
+	fakeOnv =  np.ones((2, 14400))
+	np.savetxt(onvPath, fakeOnv, delimiter=",", fmt='%.3e')
 
 	# ****** CREATE DELTAONV ****** #
 
@@ -52,16 +59,33 @@ def main():
 	# TODO: use the real models
 
 	# setup and run the model
-	model = FC()
-	model.float()
+	# model = FC()
+
+	if spiking:
+		model = LCNSpiking(14400, 2, 15, 2, 5, 0.9, 0.8, True)
+	else:
+		model = LCN(14400, 2, 15, 2, 5, True)
+
+	model.to(torch.float)
 	model.to(device)
 
 	inputs = torch.from_numpy(deltaOnv)
 	inputs = inputs.float()
 
-	output = model(inputs)
-	output = output.cpu().detach().numpy()
+	if spiking:
+		rate = RateEncodeData(nSteps, 1, 0)
+		inputs = rate(inputs)
+		inputs = inputs[None, :]
 
+	print(inputs.shape)
+	inputs = inputs.to(device)
+
+	output = model(inputs)
+
+	if spiking:
+		output = output[2]
+
+	output = output.cpu().detach().numpy().ravel()
 	print(output)
 
 	# write results to file
