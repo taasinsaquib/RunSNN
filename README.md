@@ -35,3 +35,7 @@ Code to interface with a visual studio 10 project
 	* this might fail if antivirus software doesn't allow permission to access certain files
 	* it usually works if you delete the build and dist folders and run the command again
 * executable will be in `\dist\main\main.exe`
+
+### cx_freeze
+* to install: `pip install --upgrade cx_Freeze`
+* create setup.py
