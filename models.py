@@ -9,6 +9,40 @@ import snntorch as snn
 
 from data import nSteps
 
+
+class FC(nn.Module):
+	def __init__(self):
+		super(FC, self).__init__()
+
+
+		self.fc0 = nn.Linear(14400, 7200)
+		self.fc1 = nn.Linear(7200, 3600)
+		self.fc2 = nn.Linear(3600, 1800)
+		self.fc3 = nn.Linear(1800, 900)
+		self.fc4 = nn.Linear(900, 450)
+		self.fc5 = nn.Linear(450, 2)
+
+	def forward(self, x):
+
+		x = self.fc0(x)
+		x = torch.relu(x)
+
+		x = self.fc1(x)
+		x = torch.relu(x)
+
+		x = self.fc2(x)
+		x = torch.relu(x)
+
+		x = self.fc3(x)
+		x = torch.relu(x)
+
+		x = self.fc4(x)
+		x = torch.relu(x)
+
+		x = self.fc5(x)
+		
+		return x
+
 class LCN(nn.Module):
 		def __init__(self, in_dim, out_dim, K, factor, num_layer, use_cuda=True):
 				super(LCN, self).__init__()
@@ -32,7 +66,7 @@ class LCN(nn.Module):
 						self.bias_param.append(torch.nn.Parameter(b, requires_grad=True))
 
 						# KNN
-						h5f = h5py.File('../trainSNNs/KNN/%d/knn_index_%d.h5' % (K, i), 'r')
+						h5f = h5py.File('C:/Users/taasi/Desktop/trainSNNs/KNN/%d/knn_index_%d.h5' % (K, i), 'r')
 						k_nearest = torch.from_numpy(h5f['data'][:]).type(torch.long)
 						h5f.close()
 
@@ -100,7 +134,7 @@ class LCNSpiking(nn.Module):
 						self.bias_param.append(torch.nn.Parameter(b, requires_grad=True))
 
 						# KNN
-						h5f = h5py.File('../trainSNNs/KNN/%d/knn_index_%d.h5' % (K, i), 'r')
+						h5f = h5py.File('C:/Users/taasi/Desktop/trainSNNs/KNN/%d/knn_index_%d.h5' % (K, i), 'r')
 						k_nearest = torch.from_numpy(h5f['data'][:]).type(torch.long)
 						h5f.close()
 

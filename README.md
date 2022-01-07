@@ -26,9 +26,12 @@ Code to interface with a visual studio 10 project
 		* or just run this command `pip3 install torch==1.10.0+cu113 torchvision==0.11.1+cu113 torchaudio===0.10.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html`
 
 ## Compile
+
+### pyinstaller
 * open cmd as admin (on Windows)
 	* navigate to this directory and activate the virtual environment that you set up
 	* for me, `conda activate exe`
 * run `pyinstaller main.py`
 	* this might fail if antivirus software doesn't allow permission to access certain files
+	* it usually works if you delete the build and dist folders and run the command again
 * executable will be in `\dist\main\main.exe`
