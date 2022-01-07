@@ -21,11 +21,13 @@ def main():
 	# Setup Some Variables
 	# *************************************************************************
 
-	deltaData = False		# whether to use normal ONV or delta ONV
-	tempData  = False		# generate random data to test the forward pass
+	# "normal" (default) or "delta"
+	dataType = ""
 
-	spiking   = False		# whether or not to use an SNN
-	useFC     = False		# whether or not to use an FC Network
+	# "FC" (default), "LCN", or "LCNSpiking"
+	modelType = ""
+
+	tempData  = False		# generate random data to test the forward pass
 
 	# TODO: pass path1, path2, modelDictPath as cmd line args
 	path1   = 'C:/Users/taasi/Desktop/RunSNN/files'
@@ -35,20 +37,23 @@ def main():
 	resPath = f'{path2}/resultOut.csv'
 
 	modelDictPath = 'C:/Users/taasi/Desktop/trainSNNs/model_dicts'
-	modelDictName = ""
+	modelDictName = "FC_normal_200epoch"		# default, for FC, may not work with certain flags
+
 
 	# *************************************************************************
 	# Command Line Arg Processing
 	#
-	# d for deltaONV, t for temporary, random forward pass (used for testing)
-	# s for LCNSpiking(), l for LCN(), f for FC()
-	# 	pass model dict name with the flags
+	# d for dataType, t for temporary, random forward pass (used for testing)
+	# m for modelType
+	# n for	pass model dict name with this flag
 	#
+	# Examples
+	# 	python main.py -d normal -m FC -n FC_normal_200epoch
+	# 	python main.py -d normal -m LCN -n LCN_normal_200epoch
 	# *************************************************************************
 
-
 	argList = sys.argv[1:]
-	options = "dfst"
+	options = "d:tm:n:"
 	longOptions = []
 
 	try:
@@ -59,24 +64,25 @@ def main():
 		for curArg, curVal in arguments:
 
 			if curArg in ("-d"):
-				# print ("Using delta ONV")
-				deltaData = True
-
-			elif curArg in ("-f"):
-				# print("using a FC Net")
-				useFC = True
-
-			elif curArg in ("-s"):
-				# print("using a Spiking NN")
-				spiking = True
+				dataType = curVal
+				# print(f'Data type used is - {dataType}')
 
 			elif curArg in ("-t"):
-				# print("Using random data to test forward pass pipeline")
+				print("Using random data to test forward pass pipeline")
 				tempData = True
-				 
+
+			elif curArg in ("-m"):
+				modelType = curVal
+				# print(f'Model type used is - {modelType}')
+
+			elif curArg in ("-n"):
+				modelDictName = curVal
+				# print(f'Model dict name used is - {modelDictName}')	
+
 	except getopt.error as err:
 		# output error, and return with an error code
 		print (str(err))
+		return
 
 
 	# *************************************************************************
@@ -90,7 +96,7 @@ def main():
 	if tempData is True:		
 
 		nOnv = 1
-		if deltaData:
+		if dataType == 'delta':
 			nOnv = 2
 		onv = np.random.rand(nOnv, nPhotoreceptors)
 
@@ -115,46 +121,54 @@ def main():
 			else:
 				prevOnv = np.fromstring(line, sep=',') 
 
-	if deltaData is not True:
+	if dataType == 'normal':
 		inputs = prevOnv
-	else:
+	elif dataType == 'delta':
 		inputs = curOnv - prevOnv
 
 		# only keep curOnv in file
 		with open(onvPath, 'w') as f:
 			f.write(curOnvString)
+	else:
+		print("Error: -d must be passed with 'normal' or 'delta'")
+
 
 	# *************************************************************************
 	# Run Models
 	# *************************************************************************
 	
-	if spiking is True:
-		model = LCNSpiking(nPhotoreceptors, 2, 15, 2, 5, 0, 1, True)
-	elif useFC is True:
+	# TODO: check or update LCN and LCNSpiking params if needed
+	if modelType == "FC":
 		model = FC()
-		model.load_state_dict(torch.load(f'{modelDictPath}/FC_normal_200epoch', map_location=device))
-	else:
+	elif modelType == "LCN":
 		model = LCN(nPhotoreceptors, 2, 15, 2, 5, True)
+	elif modelType == "LCNSpiking":
+		model = LCNSpiking(nPhotoreceptors, 2, 15, 2, 5, 0, 1, True)
+	else:
+		print("Error: -m must be passed with 'FC', 'LCN', or 'LCN Spiking'")
 
-	# model and inputs are float()ed and sent to device
+	model.load_state_dict(torch.load(f'{modelDictPath}/{modelDictName}', map_location=device))
+
+	# model is float()ed and sent to device
 	model.to(torch.float)
 	model.to(device)
 
+	# inputs are converted to tensors, float()ed, processed if needed, and sent to device
 	inputs = torch.from_numpy(inputs)
 	inputs = inputs.float()
 
 	# TODO: change params if needed
 	# Encode Spiking Inputs
-	if spiking:
+	if modelType == "LCNSpiking":
 		rate = RateEncodeData(nSteps, 1, 0)
 		inputs = rate(inputs)
-		inputs = inputs[None, :]
-
+	
+	inputs = inputs[None, :]
 	inputs = inputs.to(device)
 
 	# run model, get outputs
 	output = model(inputs)
-	if spiking:
+	if modelType == "LCNSpiking":
 		output = output[2]
 
 	output = output.cpu().detach().numpy().ravel()
@@ -164,6 +178,7 @@ def main():
 	with open(resPath, 'w') as the_file:
 		the_file.write(f'{ output[0] }, { output[1] }')
 		the_file.close()
+
 
 	# *************************************************************************
 	# Cleanup
@@ -180,8 +195,7 @@ if __name__ == "__main__":
 
 """
 TODO
-	Add model_dict name input on cmd line
 	Test delta data
 	Test spiking nn
-
+	add logging flag to output info
 """
