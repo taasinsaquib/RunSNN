@@ -4,10 +4,10 @@ import numpy as np
 import sys, getopt
 import torch
 
-from models      import LCN, LCNSpiking, FC
-from modelsDummy import FCSpiking
+from models import FC, LCN, LCNChannelStack
+from models import LCNSpiking2, LCNSpikingHybrid
 
-from data   import CopyRedChannel, OffSpikes, RateEncodeData, LatencyEncodeData, CopyEncodeLabels
+from data   import CopyRedChannel, OffSpikes, RateEncodeData, LatencyEncodeData, CopyEncodeLabels, OnOffChannels
 from data   import loadData, generateDataloaders, nSteps
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -26,6 +26,10 @@ def main():
 
 	# "FC" (default), "LCN", or "LCNSpiking"
 	modelType = ""
+
+	nSpikingLayers = -1
+
+	gain = 2
 
 	tempData  = False		# generate random data to test the forward pass
 
@@ -53,13 +57,13 @@ def main():
 	# *************************************************************************
 
 	argList = sys.argv[1:]
-	options = "d:tm:n:"
-	longOptions = []
+	options = "d:tm:n:l:g:"
+	longOptions = ["data", "temp", "model", "name", "layers", "gain"]
 
 	try:
 		# Parsing argument
 		arguments, values = getopt.getopt(argList, options, longOptions)
-		 
+
 		# checking each argument
 		for curArg, curVal in arguments:
 
@@ -75,9 +79,17 @@ def main():
 				modelType = curVal
 				# print(f'Model type used is - {modelType}')
 
+			elif curArg in ("-l"):
+				nSpikingLayers = int(curVal)
+				# print(f'Num spiking layers is - {nSpikingLayers}')
+
 			elif curArg in ("-n"):
 				modelDictName = curVal
 				# print(f'Model dict name used is - {modelDictName}')	
+
+			elif curArg in ("-g"):
+				gain = int(curVal)
+				print(f'Gain is - {gain}')	
 
 	except getopt.error as err:
 		# output error, and return with an error code
@@ -141,9 +153,13 @@ def main():
 	if modelType == "FC":
 		model = FC()
 	elif modelType == "LCN":
-		model = LCN(nPhotoreceptors, 2, 15, 2, 5, True)
+		model = LCN(nPhotoreceptors, 2, 25, 2, 5, True)
+	elif modelType == "LCNChannelStack":
+		model = LCNChannelStack(14400, 2, 25, 2, 5, True)
 	elif modelType == "LCNSpiking":
-		model = LCNSpiking(nPhotoreceptors, 2, 15, 2, 5, 0, 1, True)
+		model = LCNSpiking2(nPhotoreceptors, 2, 25, 2, 5, 0, 1, True)
+	elif modelType == "LCNSpikingHybrid":
+		model = LCNSpikingHybrid(nSpikingLayers, 14400, 2, 25, 2, 5, 0, 1, True)
 	else:
 		print("Error: -m must be passed with 'FC', 'LCN', or 'LCN Spiking'")
 
@@ -159,9 +175,12 @@ def main():
 
 	# TODO: change params if needed
 	# Encode Spiking Inputs
-	if modelType == "LCNSpiking":
-		rate = RateEncodeData(nSteps, 1, 0)
+	if modelType == "LCNSpiking" or modelType == "LCNSpikingHybrid":
+		rate   = RateEncodeData(nSteps, gain, 0)
 		inputs = rate(inputs)
+	if modelType == "LCNChannelStack":
+		onOff  = OnOffChannels(14400)
+		inputs = onOff(inputs)
 	
 	inputs = inputs[None, :]
 	inputs = inputs.to(device)

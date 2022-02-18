@@ -96,6 +96,22 @@ class CopyEncodeLabels():
 		x = np.tile(x[None, :], (self.nSteps, 1))
 		return x
 
+# two copies of the vector, top one has values that had positive change, bottom one for negative change
+class OnOffChannels():
+	def __init__(self, onvDim):
+		self.onvDim = onvDim
+
+	def __call__(self, x):
+		posIdx = np.where(x > 0)
+		negIdx = np.where(x < 0)
+
+		newX = torch.zeros(self.onvDim * 2)
+
+		newX[ :self.onvDim][posIdx] = x[posIdx]
+		newX[self.onvDim: ][negIdx] = x[negIdx] * -1
+
+		return newX
+
 
 # *******************************************
 # Data Functions
