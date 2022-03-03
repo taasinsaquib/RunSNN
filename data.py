@@ -45,7 +45,7 @@ class ONVData(Dataset):
 # copy ONV 3 times because RGB is all the same (white ball)
 class CopyRedChannel():
 	def __call__(self, x):
-		x = np.tile(x, 3)
+		x = x.tile((3,))
 		return x
 
 # if binary changes in color {-1, 0, 1}, assign probabilities to each of the 3 possibilities

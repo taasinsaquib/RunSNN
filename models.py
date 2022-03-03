@@ -105,7 +105,7 @@ class LCN(nn.Module):
 			self.bias_param.append(torch.nn.Parameter(b, requires_grad=True))
 
 			# KNN
-			h5f = h5py.File('C:/Users/taasi/Desktop/trainSNNs/KNN/%d/knn_index_%d.h5' % (K, i), 'r')
+			h5f = h5py.File('C:/Users/taasi/Desktop/trainSNNs/KNN/%d/%d/%d/knn_index_%d.h5' % (in_dim, factor, K, i), 'r')
 			k_nearest = torch.from_numpy(h5f['data'][:]).type(torch.long)
 			h5f.close()
 
@@ -170,7 +170,7 @@ class LCNnoBias(nn.Module):
 			self.weight_param.append(torch.nn.Parameter(w, requires_grad=True))
 
 			# KNN
-			h5f = h5py.File('C:/Users/taasi/Desktop/trainSNNs/KNN/%d/knn_index_%d.h5' % (K, i), 'r')
+			h5f = h5py.File('C:/Users/taasi/Desktop/trainSNNs/KNN/%d/%d/%d/knn_index_%d.h5' % (in_dim, factor, K, i), 'r')
 			k_nearest = torch.from_numpy(h5f['data'][:]).type(torch.long)
 			h5f.close()
 
@@ -310,7 +310,7 @@ class LCNSpiking(nn.Module):
 						self.bias_param.append(torch.nn.Parameter(b, requires_grad=True))
 
 						# KNN
-						h5f = h5py.File('C:/Users/taasi/Desktop/trainSNNs/KNN/%d/knn_index_%d.h5' % (K, i), 'r')
+						h5f = h5py.File('C:/Users/taasi/Desktop/trainSNNs/KNN/%d/%d/%d/knn_index_%d.h5' % (in_dim, factor, K, i), 'r')
 						k_nearest = torch.from_numpy(h5f['data'][:]).type(torch.long)
 						h5f.close()
 
@@ -422,7 +422,6 @@ class LCNSpiking(nn.Module):
 				return mem4_rec, spk4_rec, angles
 
 
-# fixes LCNSpiking to actually be an SNN, just by modifying the use of spike_param[i] in forward
 class LCNSpiking2(nn.Module):
 		def __init__(self, in_dim, out_dim, K, factor, num_layer, alpha, beta, use_cuda=True, spikeGrad=None, inhibition=False, directOutput=False):
 				super(LCNSpiking2, self).__init__()
@@ -452,7 +451,7 @@ class LCNSpiking2(nn.Module):
 						self.bias_param.append(torch.nn.Parameter(b, requires_grad=True))
 
 						# KNN
-						h5f = h5py.File('C:/Users/taasi/Desktop/trainSNNs/KNN/%d/knn_index_%d.h5' % (K, i), 'r')
+						h5f = h5py.File('C:/Users/taasi/Desktop/trainSNNs/KNN/%d/%d/%d/knn_index_%d.h5' % (in_dim, factor, K, i), 'r')
 						k_nearest = torch.from_numpy(h5f['data'][:]).type(torch.long)
 						h5f.close()
 
@@ -521,7 +520,7 @@ class LCNSpiking2(nn.Module):
 				input  = input.permute(1, 0, 2)  # (nSteps, batch, data)
 				x      = None
 				# angles2 = torch.zeros((nSteps, batch_size, 2)).cuda()	# add if-else statement for cpu training)
-				angles = None
+				# angles = []
 
 				for step in range(nSteps):
 					x = input[step]    
@@ -545,10 +544,10 @@ class LCNSpiking2(nn.Module):
 							# x = F.relu(torch.sum(x, 2) + bias)
 
 							if i == self.num_layer-1:
-								_, synapses[i], membranes[i] = self.spike_param[i](torch.sum(x, 2) + bias, synapses[i], membranes[i])
+								_, _, membranes[i] = self.spike_param[i](torch.sum(x, 2) + bias, synapses[i], membranes[i])
 								x = membranes[i]
 							else:
-								x, synapses[i], membranes[i] = self.spike_param[i](torch.sum(x, 2) + bias, synapses[i], membranes[i])
+								x, _, membranes[i] = self.spike_param[i](torch.sum(x, 2) + bias, synapses[i], membranes[i])
 
 							# print("2", x.shape)
 							del weight, bias, knn
@@ -557,6 +556,7 @@ class LCNSpiking2(nn.Module):
 						angle = x
 					else:
 						angle = self.fc_angle(x)
+						# angles2[step] = angle
 
 					"""
 					j = nSteps - self.nStepBackprop 
@@ -598,7 +598,7 @@ class LCNSpiking2_Leaky(nn.Module):
 						self.bias_param.append(torch.nn.Parameter(b, requires_grad=True))
 
 						# KNN
-						h5f = h5py.File('C:/Users/taasi/Desktop/trainSNNs/KNN/%d/knn_index_%d.h5' % (K, i), 'r')
+						h5f = h5py.File('C:/Users/taasi/Desktop/trainSNNs/KNN/%d/%d/%d/knn_index_%d.h5' % (in_dim, factor, K, i), 'r')
 						k_nearest = torch.from_numpy(h5f['data'][:]).type(torch.long)
 						h5f.close()
 
@@ -742,7 +742,7 @@ class LCNSpikingHybrid(nn.Module):
 					self.bias_param.append(torch.nn.Parameter(b, requires_grad=True))
 
 					# KNN
-					h5f = h5py.File('C:/Users/taasi/Desktop/trainSNNs/KNN/%d/knn_index_%d.h5' % (K, i), 'r')
+					h5f = h5py.File('C:/Users/taasi/Desktop/trainSNNs/KNN/%d/%d/%d/knn_index_%d.h5' % (in_dim, factor, K, i), 'r')
 					k_nearest = torch.from_numpy(h5f['data'][:]).type(torch.long)
 					h5f.close()
 
@@ -783,6 +783,36 @@ class LCNSpikingHybrid(nn.Module):
 		# classification = self.fc_class(x)
 		return angle
 
+
+# only have a linear layer at the end of the SNN
+class LCNSpikingHybrid2(nn.Module):
+	def __init__(self, num_spiking, in_dim, out_dim, K, factor, num_layer, alpha, beta, use_cuda=True, spikeGrad=None, inhibition=False):
+			super(LCNSpikingHybrid2, self).__init__()
+
+			# SNN PART
+			self.num_spiking = num_spiking
+			self.snn = LCNSpiking2(in_dim, out_dim, K, factor, num_spiking, alpha, beta, use_cuda, spikeGrad, inhibition, directOutput=True)
+			
+			# ANN PART
+			self.dtype = torch.FloatTensor
+			self.weight_param, self.bias_param = nn.ParameterList(), nn.ParameterList()
+			self.knn_list = []
+			self.num_layer = num_layer
+			self.use_cuda = use_cuda
+		
+			dim = int(in_dim / (factor ** self.num_spiking))
+			self.fc_angle = nn.Linear(dim, out_dim)
+
+	def forward(self, input):
+
+		x = input
+
+		# SNN PART
+		_, _, x = self.snn(x)
+
+		angle = self.fc_angle(x)
+		
+		return angle
 
 # *****************************************************************************
 # Other
