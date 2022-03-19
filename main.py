@@ -154,7 +154,7 @@ def main():
 	if modelType == "FC":
 		model = FC()
 	elif modelType == "LCN":
-		model = LCN(nPhotoreceptors, 2, 25, 2, 5, True)
+		model = LCN(43200, 2, 25, 5, 5, True)
 	elif modelType == "LCNChannelStack":
 		model = LCNChannelStack(14400, 2, 25, 2, 5, True)
 	elif modelType == "LCNSpiking":
@@ -178,6 +178,9 @@ def main():
 
 	# TODO: change params if needed
 	# Encode Spiking Inputs
+	if modelType == "LCN":
+		rgb = CopyRedChannel()
+		inputs = rgb(inputs)
 	if modelType == "LCNSpiking" or modelType == "LCNSpikingHybrid" or modelType == "LCNSpikingHybrid2":
 		rate   = RateEncodeData(nSteps, gain, 0)
 		rgb = CopyRedChannel()
